@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz de Verbos Irregulares (con audio)</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+    h1 { text-align: center; margin-bottom: 6px; }
+    p.lead { text-align:center; margin-top:0; color:#333; }
+    .card { background: white; padding: 14px; border-radius: 10px; margin: 12px 0; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    label { font-weight: bold; display:block; margin-top:8px; font-size:14px; }
+    input, select { width: 100%; padding: 8px; margin-top:6px; border-radius:6px; border:1px solid #ccc; box-sizing:border-box;}
+    button { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; background: #1976d2; color: white; margin-top:10px; }
+    .inline { display:inline-block; vertical-align:middle; }
+    .btn-green { background: #4caf50; }
+    .feedback { margin-top:10px; padding:8px; border-radius:6px; }
+    .ok { background:#e8f5e9; color:#2e7d32; padding:6px; border-radius:6px; margin-bottom:6px;}
+    .bad { background:#ffebee; color:#c62828; padding:6px; border-radius:6px; margin-bottom:6px;}
+    #controls { display:flex; gap:10px; margin-top:12px; justify-content:center; flex-wrap:wrap;}
+    #scoreBox { font-size:18px; font-weight:bold; margin-top:12px; text-align:center; }
+    .meta { color:#555; font-size:13px; margin-top:6px; }
+    .audioBtn { background:#ff9800; margin-left:8px; }
+    .small { font-size:12px; padding:6px 8px; }
+    .verb-heading { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+    .verb-title { font-size:18px; margin:0; }
+  </style>
+</head>
+<body>
+  <h1>Quiz de Verbos Irregulares</h1>
+  <p class="lead">Escribe las tres formas (presente, pasado, participio). En la oración, elige cuál forma queda mejor. Pulsa el icono de audio para oír la pronunciación (TTS).</p>
+
+  <div id="quiz"></div>
+
+  <div id="controls">
+    <button onclick="checkAll()" class="btn-green">Verificar todos</button>
+    <button onclick="showScore()">Mostrar puntuación</button>
+    <button onclick="resetAll()">Reiniciar</button>
+  </div>
+
+  <div id="scoreBox"></div>
+
+  <script>
+    // función TTS
+    function speak(text) {
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 0.95;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    } catch (e) {
+      console.warn('TTS no disponible:', e);
+    }
+  }
+
+    // lista completa con significado (es), oración, forma correcta (base/past/pp) y motivo
+        const verbs = [
+        {base:"be", past:"was/were", pp:"been", es:"ser / estar", sentence:"Yesterday she ___ very tired.", correct:"past", reason:"La palabra 'Yesterday' indica pasado simple."},
+        {base:"become", past:"became", pp:"become", es:"hacerse, llegar a ser", sentence:"In a few years he has ___ a pilot.", correct:"pp", reason:"'has' + participio pide participio pasado."},
+        {base:"begin", past:"began", pp:"begun", es:"empezar", sentence:"This show usually ___ at 8pm.", correct:"base", reason:"'usually' indica presente habitual."},
+        {base:"bite", past:"bit", pp:"bitten", es:"morder", sentence:"Last week the dog ___ me.", correct:"past", reason:"'Last week' indica pasado simple."},
+        {base:"blow", past:"blew", pp:"blown", es:"soplar", sentence:"The storm had ___ the roof away.", correct:"pp", reason:"'had' + participio requiere participio pasado."},
+        {base:"break", past:"broke", pp:"broken", es:"romper", sentence:"Yesterday he ___ the window.", correct:"past", reason:"'Yesterday' indica pasado."},
+        {base:"bring", past:"brought", pp:"brought", es:"traer", sentence:"She usually ___ snacks to class.", correct:"base", reason:"'usually' indica presente habitual."},
+        {base:"build", past:"built", pp:"built", es:"construir", sentence:"They have ___ a new bridge.", correct:"pp", reason:"'have' + participio pide participio."},
+        {base:"buy", past:"bought", pp:"bought", es:"comprar", sentence:"He ___ a car last month.", correct:"past", reason:"'last month' indica pasado."},
+        {base:"catch", past:"caught", pp:"caught", es:"atrapar", sentence:"I often ___ the bus at 7.", correct:"base", reason:"'often' indica presente habitual."},
+        {base:"choose", past:"chose", pp:"chosen", es:"escoger", sentence:"She ___ the red dress yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"come", past:"came", pp:"come", es:"venir", sentence:"They have ___ home already.", correct:"pp", reason:"'have' + participio pide participio."},
+        {base:"cost", past:"cost", pp:"cost", es:"costar", sentence:"The repairs ___ a lot last year.", correct:"past", reason:"'last year' indica pasado."},
+        {base:"cut", past:"cut", pp:"cut", es:"cortar", sentence:"He always ___ vegetables before dinner.", correct:"base", reason:"'always' indica presente habitual."},
+        {base:"do", past:"did", pp:"done", es:"hacer", sentence:"I ___ my homework yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"draw", past:"drew", pp:"drawn", es:"dibujar", sentence:"She has ___ a beautiful portrait.", correct:"pp", reason:"'has' + participio pide participio."},
+        {base:"drink", past:"drank", pp:"drunk", es:"beber", sentence:"Last night he ___ too much.", correct:"past", reason:"'Last night' indica pasado."},
+        {base:"drive", past:"drove", pp:"driven", es:"conducir", sentence:"He ___ to school yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"eat", past:"ate", pp:"eaten", es:"comer", sentence:"They have ___ already.", correct:"pp", reason:"'have' + participio pide participio."},
+        {base:"fall", past:"fell", pp:"fallen", es:"caer", sentence:"She ___ off the bike yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"feed", past:"fed", pp:"fed", es:"alimentar", sentence:"He ___ the dog every morning.", correct:"base", reason:"'every morning' indica presente habitual."},
+        {base:"feel", past:"felt", pp:"felt", es:"sentir", sentence:"I felt sick yesterday.", correct:"past", reason:"Frase en pasado: 'yesterday'."},
+        {base:"fight", past:"fought", pp:"fought", es:"pelear", sentence:"They fought last night.", correct:"past", reason:"'last night' indica pasado."},
+        {base:"find", past:"found", pp:"found", es:"encontrar", sentence:"She has ___ the keys.", correct:"pp", reason:"'has' + participio pide participio."},
+        {base:"fit", past:"fit", pp:"fit", es:"quedar (ropa), ajustar", sentence:"The jacket ___ perfectly.", correct:"base", reason:"Contexto de estado presente."},
+        {base:"fly", past:"flew", pp:"flown", es:"volar", sentence:"He flew to Tokyo last year.", correct:"past", reason:"'last year' indica pasado."},
+        {base:"forget", past:"forgot", pp:"forgotten", es:"olvidar", sentence:"I have ___ his name.", correct:"pp", reason:"'have' + participio pide participio."},
+        {base:"forgive", past:"forgave", pp:"forgiven", es:"perdonar", sentence:"She forgave him yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"freeze", past:"froze", pp:"frozen", es:"congelar", sentence:"The lake has ___ solid.", correct:"pp", reason:"'has' + participio pide participio."},
+        {base:"get", past:"got", pp:"gotten", es:"obtener/recibir (US 'gotten')", sentence:"He got a prize last week.", correct:"past", reason:"'last week' indica pasado."},
+        {base:"give", past:"gave", pp:"given", es:"dar", sentence:"She has ___ me her book.", correct:"pp", reason:"'has' + participio pide participio."},
+        {base:"go", past:"went", pp:"gone", es:"ir", sentence:"They went to the beach yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"grow", past:"grew", pp:"grown", es:"crecer", sentence:"The plant has ___ a lot.", correct:"pp", reason:"'has' + participio pide participio."},
+        {base:"hang", past:"hung", pp:"hung", es:"colgar (NOT 'hanged' when not referring to execution)", sentence:"He hung the picture last weekend.", correct:"past", reason:"'last weekend' indica pasado."},
+        {base:"have", past:"had", pp:"had", es:"tener", sentence:"I had breakfast this morning.", correct:"past", reason:"Contexto de acción completada en pasado."},
+        {base:"hear", past:"heard", pp:"heard", es:"oír", sentence:"She heard a noise last night.", correct:"past", reason:"'last night' indica pasado."},
+        {base:"hide", past:"hid", pp:"hidden", es:"esconder", sentence:"He has hidden the gift.", correct:"pp", reason:"'has' + participio pide participio."},
+        {base:"hit", past:"hit", pp:"hit", es:"golpear", sentence:"He hit the ball yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"hold", past:"held", pp:"held", es:"sostener", sentence:"She held the baby carefully.", correct:"past", reason:"Acción en pasado por contexto."},
+        {base:"hurt", past:"hurt", pp:"hurt", es:"lastimar / doler", sentence:"I have hurt my leg.", correct:"pp", reason:"'have' + participio pide participio."},
+        {base:"keep", past:"kept", pp:"kept", es:"mantener / guardar", sentence:"They kept the secret.", correct:"past", reason:"Contexto pasado."},
+        {base:"know", past:"knew", pp:"known", es:"saber / conocer", sentence:"I knew the answer yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"lead", past:"led", pp:"led", es:"dirigir", sentence:"He led the team last season.", correct:"past", reason:"'last season' indica pasado."},
+        {base:"leave", past:"left", pp:"left", es:"dejar / irse", sentence:"She left two hours ago.", correct:"past", reason:"'two hours ago' indica pasado."},
+        {base:"lend", past:"lent", pp:"lent", es:"prestar", sentence:"He lent me his book last week.", correct:"past", reason:"'last week' indica pasado."},
+        {base:"let", past:"let", pp:"let", es:"permitir / dejar", sentence:"They let us enter yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"light", past:"lit", pp:"lit", es:"encender / alumbrar", sentence:"He lit the candle last night.", correct:"past", reason:"'last night' indica pasado."},
+        {base:"lose", past:"lost", pp:"lost", es:"perder", sentence:"She lost her keys this morning.", correct:"past", reason:"Contexto pasado reciente."},
+        {base:"make", past:"made", pp:"made", es:"hacer", sentence:"He makes coffee every morning.", correct:"base", reason:"'every morning' indica presente habitual."},
+        {base:"mean", past:"meant", pp:"meant", es:"significar / querer decir", sentence:"I meant to call you yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"meet", past:"met", pp:"met", es:"encontrarse / conocer (a)", sentence:"We met at the cafe last week.", correct:"past", reason:"'last week' indica pasado."},
+        {base:"put", past:"put", pp:"put", es:"poner", sentence:"Please put the book on the shelf.", correct:"base", reason:"Imperative/presente."},
+        {base:"quit", past:"quit", pp:"quit", es:"dejar / renunciar", sentence:"He quit his job last month.", correct:"past", reason:"'last month' indica pasado."},
+        {base:"read", past:"read", pp:"read", es:"leer", sentence:"Yesterday she read a long book.", correct:"past", reason:"'Yesterday' indica pasado."},
+        {base:"ride", past:"rode", pp:"ridden", es:"montar (bicicleta/caballo)", sentence:"He rode his bike yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"ring", past:"rang", pp:"rung", es:"sonar / llamar (telefono)", sentence:"The bell rang an hour ago.", correct:"past", reason:"'an hour ago' indica pasado."},
+        {base:"run", past:"ran", pp:"run", es:"correr", sentence:"She ran in the marathon last year.", correct:"past", reason:"'last year' indica pasado."},
+        {base:"say", past:"said", pp:"said", es:"decir", sentence:"He said he would come yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"see", past:"saw", pp:"seen", es:"ver", sentence:"I have seen that movie before.", correct:"pp", reason:"'have' + participio pide participio."},
+        {base:"sell", past:"sold", pp:"sold", es:"vender", sentence:"They sold their house last month.", correct:"past", reason:"'last month' indica pasado."},
+        {base:"send", past:"sent", pp:"sent", es:"enviar", sentence:"She sent the email yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"set", past:"set", pp:"set", es:"colocar / fijar", sentence:"He set the table every evening.", correct:"base", reason:"presente habitual."},
+        {base:"sew", past:"sewed", pp:"sewn", es:"coser", sentence:"She has sewn a new dress.", correct:"pp", reason:"'has' + participio pide participio."},
+        {base:"shake", past:"shook", pp:"shaken", es:"agitar / sacudir", sentence:"I shook his hand yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"shrink", past:"shrank", pp:"shrunk", es:"encoger", sentence:"The shirt shrank in the wash.", correct:"past", reason:"Acción ocurrida en pasado."},
+        {base:"sing", past:"sang", pp:"sung", es:"cantar", sentence:"She sang beautifully last night.", correct:"past", reason:"'last night' indica pasado."},
+        {base:"sit", past:"sat", pp:"sat", es:"sentarse", sentence:"He sat on the chair a moment ago.", correct:"past", reason:"'a moment ago' indica pasado."},
+        {base:"sleep", past:"slept", pp:"slept", es:"dormir", sentence:"They slept early last night.", correct:"past", reason:"'last night' indica pasado."},
+        {base:"speak", past:"spoke", pp:"spoken", es:"hablar", sentence:"He has spoken to the manager.", correct:"pp", reason:"'has' + participio pide participio."},
+        {base:"spend", past:"spent", pp:"spent", es:"gastar / pasar (tiempo)", sentence:"She spent all her money yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"stand", past:"stood", pp:"stood", es:"estar de pie / soportar", sentence:"Please stand up now.", correct:"base", reason:"imperative/presente."},
+        {base:"steal", past:"stole", pp:"stolen", es:"robar", sentence:"The thief stole the painting last night.", correct:"past", reason:"'last night' indica pasado."},
+        {base:"sting", past:"stung", pp:"stung", es:"picar (abeja), punzar", sentence:"He was stung by a bee yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"sweep", past:"swept", pp:"swept", es:"barrer", sentence:"She swept the floor this morning.", correct:"past", reason:"'this morning' en contexto pasado reciente."},
+        {base:"swim", past:"swam", pp:"swum", es:"nadar", sentence:"He swam in the lake last summer.", correct:"past", reason:"'last summer' indica pasado."},
+        {base:"take", past:"took", pp:"taken", es:"tomar / llevar", sentence:"She has taken the medicine.", correct:"pp", reason:"'has' + participio pide participio."},
+        {base:"teach", past:"taught", pp:"taught", es:"enseñar", sentence:"He taught us yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"tell", past:"told", pp:"told", es:"decir / contar", sentence:"She told the story last night.", correct:"past", reason:"'last night' indica pasado."},
+        {base:"think", past:"thought", pp:"thought", es:"pensar", sentence:"I thought about that earlier.", correct:"past", reason:"Contexto pasado."},
+        {base:"throw", past:"threw", pp:"thrown", es:"lanzar / tirar", sentence:"He threw the ball yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"understand", past:"understood", pp:"understood", es:"entender", sentence:"They understood the lesson.", correct:"past", reason:"Contexto de acción ya completada."},
+        {base:"wake", past:"woke", pp:"woken", es:"despertar", sentence:"I woke up early this morning.", correct:"past", reason:"'this morning' en pasado."},
+        {base:"wear", past:"wore", pp:"worn", es:"llevar puesto", sentence:"She wore a dress to the party.", correct:"past", reason:"acción en pasado."},
+        {base:"win", past:"won", pp:"won", es:"ganar", sentence:"They won the match yesterday.", correct:"past", reason:"'yesterday' indica pasado."},
+        {base:"wind", past:"wound", pp:"wound", es:"enrollar / dar cuerda", sentence:"He wound the watch this morning.", correct:"past", reason:"acción pasada reciente."},
+        {base:"write", past:"wrote", pp:"written", es:"escribir", sentence:"She has written three books.", correct:"pp", reason:"'has' + participio pide participio."}
+        ];
+
+  let totalChecks = 0;
+  let correctChecks = 0;
+
+  // acepta alternativas como "was/were"
+  function matchesAny(input, correctValue) {
+    const candidates = correctValue.split('/').map(s => s.trim().toLowerCase()).filter(Boolean);
+    return candidates.includes(input.trim().toLowerCase());
+  }
+
+  // comparación estricta del significado
+  function meaningMatch(input, reference) {
+    return input.trim().toLowerCase() === reference.trim().toLowerCase();
+  }
+
+  function createCard(v) {
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    // heading
+    const heading = document.createElement('div');
+    heading.className = 'verb-heading';
+    const title = document.createElement('h3');
+    title.className = 'verb-title';
+    title.textContent = `${v.base} `;
+    heading.appendChild(title);
+
+    const audioWrap = document.createElement('div');
+    const btnAudio = document.createElement('button');
+    btnAudio.className = 'audioBtn small inline';
+    btnAudio.textContent = '🔊 Pronunciar';
+    btnAudio.onclick = () => speak(v.base);
+    audioWrap.appendChild(btnAudio);
+
+    heading.appendChild(audioWrap);
+    card.appendChild(heading);
+
+    // inputs de conjugaciones
+    const lab1 = document.createElement('label'); lab1.textContent = 'Presente (forma base):';
+    const in1 = document.createElement('input');
+    card.appendChild(lab1); card.appendChild(in1);
+
+    const lab2 = document.createElement('label'); lab2.textContent = 'Pasado:';
+    const in2 = document.createElement('input');
+    card.appendChild(lab2); card.appendChild(in2);
+
+    const lab3 = document.createElement('label'); lab3.textContent = 'Participio (past participle):';
+    const in3 = document.createElement('input');
+    card.appendChild(lab3); card.appendChild(in3);
+
+    // NUEVO: significado del alumno
+    const lab4 = document.createElement('label'); lab4.textContent = 'Significado (en español):';
+    const meaningInput = document.createElement('input');
+    meaningInput.placeholder = "Escribe tu propio significado";
+    card.appendChild(lab4);
+    card.appendChild(meaningInput);
+
+    // oración
+    const p = document.createElement('p');
+    p.textContent = v.sentence;
+    card.appendChild(p);
+
+    // selección de forma correcta
+    const sel = document.createElement('select');
+    const opts = [{k:'base', t:v.base},{k:'past', t:v.past},{k:'pp', t:v.pp}];
+    opts.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.k;
+      opt.textContent = o.t;
+      sel.appendChild(opt);
+    });
+    card.appendChild(sel);
+
+    // feedback
+    const feedback = document.createElement('div');
+    feedback.className = 'feedback';
+    feedback.style.display = 'none';
+    card.appendChild(feedback);
+
+    // botón de verificación
+    const btn = document.createElement('button');
+    btn.textContent = 'Verificar este verbo';
+    btn.onclick = () => {
+      feedback.style.display = 'block';
+      feedback.innerHTML = '';
+      let localCorrect = true;
+
+      // presente
+      if(matchesAny(in1.value, v.base)) {
+        in1.style.background = '#e8f5e9';
+      } else {
+        in1.style.background = '#ffebee';
+        feedback.innerHTML += `<div class="bad">Presente correcto: ${v.base}</div>`;
+        localCorrect = false;
+      }
+
+      // pasado
+      if(matchesAny(in2.value, v.past)) {
+        in2.style.background = '#e8f5e9';
+      } else {
+        in2.style.background = '#ffebee';
+        feedback.innerHTML += `<div class="bad">Pasado correcto: ${v.past}</div>`;
+        localCorrect = false;
+      }
+
+      // participio
+      if(matchesAny(in3.value, v.pp)) {
+        in3.style.background = '#e8f5e9';
+      } else {
+        in3.style.background = '#ffebee';
+        feedback.innerHTML += `<div class="bad">Participio correcto: ${v.pp}</div>`;
+        localCorrect = false;
+      }
+
+      // NUEVO: significado en español
+      if(meaningMatch(meaningInput.value, v.es)) {
+        meaningInput.style.background = '#e8f5e9';
+      } else {
+        meaningInput.style.background = '#ffebee';
+        feedback.innerHTML += `<div class="bad">Significado correcto: ${v.es}</div>`;
+        localCorrect = false;
+      }
+
+      // selección correcta en oración
+      const selOk = sel.value === v.correct;
+      const correctWord = v[v.correct];
+
+      feedback.innerHTML += selOk
+        ? `<div class="ok">Selección correcta en la oración: ${correctWord}</div>`
+        : `<div class="bad">La forma correcta en la oración es: ${correctWord}</div>`;
+
+      // explicación
+      feedback.innerHTML += `<div class="meta">Explicación: ${v.reason}</div>`;
+
+      // puntuación
+      totalChecks++;
+      if(localCorrect && selOk) correctChecks++;
+    };
+
+    card.appendChild(btn);
+    return card;
+  }
+
+  function loadQuiz() {
+    const container = document.getElementById('quiz');
+    container.innerHTML = '';
+
+    // 💥 NUEVO: Mezclar verbos aleatoriamente
+    verbs.sort(() => Math.random() - 0.5);
+
+    verbs.forEach(v => container.appendChild(createCard(v)));
+
+    totalChecks = 0;
+    correctChecks = 0;
+    document.getElementById('scoreBox').textContent = '';
+  }
+
+  function checkAll() {
+    document.querySelectorAll('.card button').forEach(b => b.click());
+    alert('Se han verificado todos los verbos. Revisa la retroalimentación en cada uno.');
+  }
+
+  function showScore() {
+    const box = document.getElementById('scoreBox');
+    if (totalChecks === 0) {
+      box.textContent = 'Aún no has verificado ningún verbo.';
+      return;
+    }
+    const pct = Math.round((correctChecks / totalChecks) * 100);
+    box.textContent = `Puntuación: ${correctChecks} / ${totalChecks}  (${pct}%)`;
+  }
+
+  function resetAll() {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    loadQuiz();
+  }
+
+  loadQuiz();
+</script>
